@@ -1,104 +1,46 @@
-import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import api from "./utils/api.js";
-
-import TodoBoard from "./components/TodoBoard";
-
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import Container from "react-bootstrap/Container";
+import "./App.css";
+import { Routes, Route } from "react-router-dom";
+import TodoPage from "./pages/TodoPage";
+import RegisterPage from "./pages/RegisterPage";
+import LoginPage from "./pages/LoginPage";
 import { useEffect, useState } from "react";
+import PrivateRoute from "./route/PrivateRoute";
+import api from "./utils/api";
 
 function App() {
-  const [todoList, setTodoList] = useState([]);
-  const [todoValue, setTodoValue] = useState("");
+  const [user, setUser] = useState(null);
 
-  const getTasks = async () => {
-    const response = await api.get("/tasks");
-    setTodoList(response.data.data);
-  };
-
-  const addTask = async () => {
+  const getUser = async () => {
     try {
-      const response = await api.post("/tasks", {
-        task: todoValue,
-        isComplete: false,
-      });
-      if (response.status === 200) {
-        setTodoValue("");
-        getTasks();
-      } else {
-        throw new Error("task can not be added");
+      const storedToken = sessionStorage.getItem("token");
+      if (storedToken) {
+        const response = await api.get("/user/me");
+        console.log("rrrrrrr", response)
+        setUser(response.data.user);
       }
     } catch (err) {
-      console.log("error", err);
+      setUser(null)
     }
   };
-
-  const deleteTask = async (id) => {
-    try {
-      const response = await api.delete(`/tasks/${id}`);
-      if (response.status === 200) {
-        getTasks();
-      } else {
-        throw new Error("task can not be deleted");
-      }
-    } catch (err) {
-      console.log("error", err);
-    }
-  };
-
-  const isCompleteTask = async (id) => {
-    try {
-      const task = todoList.find((i) => i._id === id);
-      const response = await api.put(`/tasks/${id}`, {
-        isComplete: !task.isComplete,
-      });
-      if (response.status === 200) {
-        getTasks();
-      } else {
-        throw new Error("task can not be updated");
-      }
-    } catch (err) {
-      console.log("error", err);
-    }
-  };
-
-  const enterFn = (e)=>{
-    if(e.keyCode === 13){
-      addTask(e.target.value)
-    } 
-  }
 
   useEffect(() => {
-    getTasks();
+    getUser();
   }, []);
-  return (
-    <Container>
-      <Row className="add-item-row">
-        <Col xs={12} sm={10}>
-          <input
-            type="text"
-            placeholder="할일을 입력하세요"
-            className="input-box"
-            value={todoValue}
-            onChange={(event) => setTodoValue(event.target.value)}
-            onKeyUp={enterFn}
-          />
-        </Col>
-        <Col xs={12} sm={2}>
-          <button className="button-add" onClick={addTask}>
-            추가
-          </button>
-        </Col>
-      </Row>
 
-      <TodoBoard
-        todoList={todoList}
-        deleteTask={deleteTask}
-        isCompleteTask={isCompleteTask}
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <PrivateRoute user={user}>
+            <TodoPage setUser={setUser}/>
+          </PrivateRoute>
+        }
       />
-    </Container>
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/login" element={<LoginPage setUser={setUser} user={user}/>} />
+    </Routes>
   );
 }
 
